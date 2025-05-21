@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PT TUNAS MANDIRI PERKASA</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary-color: #5D5CDE;
@@ -47,34 +48,6 @@
             border-radius: 0.25rem;
             font-size: 0.75rem;
             font-weight: 500;
-        }
-
-        .status-badge.in {
-            background-color: rgba(5, 150, 105, 0.2);
-            color: rgb(5, 150, 105);
-        }
-
-        .status-badge.out {
-            background-color: rgba(220, 38, 38, 0.2);
-            color: rgb(220, 38, 38);
-        }
-
-        .status-badge.shipping {
-            background-color: rgba(59, 130, 246, 0.2);
-            color: rgb(59, 130, 246);
-        }
-
-        .status-badge.return {
-            background-color: rgba(245, 158, 11, 0.2);
-            color: rgb(245, 158, 11);
-        }
-
-        .dark .status-badge {
-            color: white;
-        }
-
-        .input-group {
-            margin-bottom: 1rem;
         }
 
         .btn {
@@ -131,9 +104,14 @@
                         <option value="return">Pengembalian</option>
                     </select>
                 </div>
-                <div>
-                    <label for="destinationAddress" class="block text-sm font-medium mb-1">Alamat Tujuan</label>
-                    <input type="text" id="destinationAddress" placeholder="Alamat Tujuan" style="display:none;"
+                <div id="shippingAddress" style="display:none;">
+                    <label for="shippingDestination" class="block text-sm font-medium mb-1">Alamat Pengiriman</label>
+                    <input type="text" id="shippingDestination" placeholder="Dari mana ke mana" required
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-base dark:bg-gray-700">
+                </div>
+                <div id="returnAddress" style="display:none;">
+                    <label for="returnDestination" class="block text-sm font-medium mb-1">Alamat Pengembalian</label>
+                    <input type="text" id="returnDestination" placeholder="Dari mana ke mana" required
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-base dark:bg-gray-700">
                 </div>
                 <div class="flex items-end">
@@ -209,6 +187,9 @@
                 Belum ada transaksi. Tambahkan transaksi terlebih dahulu.
             </div>
         </div>
+
+        <button id="downloadExcelButton" class="btn btn-secondary mt-4">Download Data Rekapan (Excel)</button>
+        <button id="clearDataButton" class="btn btn-secondary mt-4">Clear Data</button>
     </div>
 
     <script>
@@ -237,7 +218,8 @@
         const itemNameInput = document.getElementById('itemName');
         const itemQuantityInput = document.getElementById('itemQuantity');
         const transactionTypeSelect = document.getElementById('transactionType');
-        const destinationAddressInput = document.getElementById('destinationAddress');
+        const shippingDestinationInput = document.getElementById('shippingDestination');
+        const returnDestinationInput = document.getElementById('returnDestination');
         const transactionList = document.getElementById('transactionList');
         const stockList = document.getElementById('stockList');
         const fullTransactionList = document.getElementById('fullTransactionList');
@@ -260,6 +242,24 @@
             'return': 'Pengembalian'
         };
 
+        // Show address fields based on transaction type
+        transactionTypeSelect.addEventListener('change', function() {
+            const type = this.value;
+            const shippingAddressDiv = document.getElementById('shippingAddress');
+            const returnAddressDiv = document.getElementById('returnAddress');
+
+            if (type === 'shipping') {
+                shippingAddressDiv.style.display = 'block';
+                returnAddressDiv.style.display = 'none';
+            } else if (type === 'return') {
+                returnAddressDiv.style.display = 'block';
+                shippingAddressDiv.style.display = 'none';
+            } else {
+                shippingAddressDiv.style.display = 'none';
+                returnAddressDiv.style.display = 'none';
+            }
+        });
+
         // Form submit handler
         form.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -268,12 +268,18 @@
             const quantity = parseInt(itemQuantityInput.value);
             const type = transactionTypeSelect.value;
             const date = new Date().toISOString();
-            const address = type === 'shipping' ? destinationAddressInput.value : '';
+            let address = '';
+
+            if (type === 'shipping') {
+                address = shippingDestinationInput.value;
+            } else if (type === 'return') {
+                address = returnDestinationInput.value;
+            }
 
             // Create new transaction
             const transaction = {
                 id: Date.now(),
-                itemName,
+                name: itemName,
                 quantity,
                 type,
                 date,
@@ -314,7 +320,7 @@
             recentTransactions.forEach(transaction => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${transaction.itemName}</td>
+                    <td>${transaction.name}</td>
                     <td>${transaction.quantity}</td>
                     <td><span class="status-badge ${transaction.type}">${transactionLabels[transaction.type]}</span></td>
                     <td>${formatDate(transaction.date)}</td>
@@ -344,21 +350,21 @@
             const stockLevels = {};
             
             filteredTransactions.forEach(transaction => {
-                const { itemName, quantity, type } = transaction;
+                const { name, quantity, type } = transaction;
                 
-                if (!stockLevels[itemName]) {
-                    stockLevels[itemName] = 0;
+                if (!stockLevels[name]) {
+                    stockLevels[name] = 0;
                 }
                 
                 // Update stock based on transaction type
                 switch (type) {
                     case 'in':
                     case 'return':
-                        stockLevels[itemName] += quantity;
+                        stockLevels[name] += quantity;
                         break;
                     case 'out':
                     case 'shipping':
-                        stockLevels[itemName] -= quantity;
+                        stockLevels[name] -= quantity;
                         break;
                 }
             });
@@ -387,7 +393,7 @@
             [...transactions].reverse().forEach(transaction => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${transaction.itemName}</td>
+                    <td>${transaction.name}</td>
                     <td>${transaction.quantity}</td>
                     <td><span class="status-badge ${transaction.type}">${transactionLabels[transaction.type]}</span></td>
                     <td>${formatDate(transaction.date)}</td>
@@ -424,7 +430,39 @@
         function showNotification(message) {
             alert(message); // Replace with a better UI notification in real use
         }
-        
+
+        // Clear data button functionality
+        document.getElementById('clearDataButton').addEventListener('click', () => {
+            if (confirm('Apakah Anda yakin ingin menghapus semua data transaksi?')) {
+                localStorage.removeItem('transactions');
+                transactions = [];
+                renderRecentTransactions();
+                generateStockReport();
+                renderAllTransactions();
+                showNotification('Semua data transaksi telah dihapus.');
+            }
+        });
+
+        // Export data to Excel
+        document.getElementById('downloadExcelButton').addEventListener('click', downloadDataAsExcel);
+
+        function downloadDataAsExcel() {
+            const data = transactions.map(transaction => ({
+                'Nama Barang': transaction.name,
+                'Jumlah': transaction.quantity,
+                'Jenis Transaksi': transaction.type,
+                'Tanggal': new Date(transaction.date).toLocaleString(),
+                'Alamat Tujuan': transaction.address || '-'
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekapan Transaksi');
+
+            // Download the Excel file
+            XLSX.writeFile(workbook, 'rekapan_transaksi.xlsx');
+        }
+
         // Initial renders
         renderRecentTransactions();
         generateStockReport(); // Show initial stock report without date filter
