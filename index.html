@@ -106,12 +106,12 @@
                 </div>
                 <div id="shippingAddress" style="display:none;">
                     <label for="shippingDestination" class="block text-sm font-medium mb-1">Alamat Pengiriman</label>
-                    <input type="text" id="shippingDestination" placeholder="Dari mana ke mana" required
+                    <input type="text" id="shippingDestination" placeholder="Dari mana ke mana" 
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-base dark:bg-gray-700">
                 </div>
                 <div id="returnAddress" style="display:none;">
                     <label for="returnDestination" class="block text-sm font-medium mb-1">Alamat Pengembalian</label>
-                    <input type="text" id="returnDestination" placeholder="Dari mana ke mana" required
+                    <input type="text" id="returnDestination" placeholder="Dari mana ke mana" 
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-base dark:bg-gray-700">
                 </div>
                 <div class="flex items-end">
@@ -248,16 +248,8 @@
             const shippingAddressDiv = document.getElementById('shippingAddress');
             const returnAddressDiv = document.getElementById('returnAddress');
 
-            if (type === 'shipping') {
-                shippingAddressDiv.style.display = 'block';
-                returnAddressDiv.style.display = 'none';
-            } else if (type === 'return') {
-                returnAddressDiv.style.display = 'block';
-                shippingAddressDiv.style.display = 'none';
-            } else {
-                shippingAddressDiv.style.display = 'none';
-                returnAddressDiv.style.display = 'none';
-            }
+            shippingAddressDiv.style.display = (type === 'shipping') ? 'block' : 'none';
+            returnAddressDiv.style.display = (type === 'return') ? 'block' : 'none';
         });
 
         // Form submit handler
@@ -268,13 +260,7 @@
             const quantity = parseInt(itemQuantityInput.value);
             const type = transactionTypeSelect.value;
             const date = new Date().toISOString();
-            let address = '';
-
-            if (type === 'shipping') {
-                address = shippingDestinationInput.value;
-            } else if (type === 'return') {
-                address = returnDestinationInput.value;
-            }
+            const address = (type === 'shipping') ? shippingDestinationInput.value : (type === 'return' ? returnDestinationInput.value : '');
 
             // Create new transaction
             const transaction = {
